@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security / Privacy / Safety report (private)
+    url: mailto:security@soma-project.example
+    about: Для чувствительных проблем используйте приватный канал, а не публичные issue.
