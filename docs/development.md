@@ -1,4 +1,4 @@
-# Разработка Soma (transport/config baseline)
+# Разработка Soma (transport/config + safety baseline)
 
 ## Установка зависимостей
 
@@ -37,11 +37,22 @@ npm run lint   # ESLint
 npm run format # Prettier
 ```
 
-## Как тестировать allowlist
+## Где находятся safety boundaries
 
-- `TELEGRAM_ALLOWED_USER_IDS=` (пусто) -> бот отвечает любому пользователю.
-- `TELEGRAM_ALLOWED_USER_IDS=123,456` -> бот отвечает только указанным user id.
-- Для остальных возвращается короткий нейтральный отказ.
+- Правила классификации: `src/services/safety/classifier.ts`
+- Policy evaluation: `src/services/safety/policy.ts`
+- Пользовательские fallback-тексты: `src/services/safety/messages.ts`
+
+## Как тестировать policy behavior
+
+- Запустите `npm run test`.
+- Проверки policy находятся в `tests/services/safety/policy.test.ts`.
+- Проверки allowlist отдельно в `tests/bot/allowlist.test.ts`.
+
+## Правило расширения
+
+Новые пользовательские тексты и новые response-path не должны обходить safety/policy слой.
+Transport (`src/bot`) должен оставаться тонким и не принимать содержательные policy-решения.
 
 ## Важно про polling
 

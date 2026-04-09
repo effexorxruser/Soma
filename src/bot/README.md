@@ -1,9 +1,9 @@
 # bot layer
 
-В папке `telegram/` расположен минимальный transport baseline:
+В `telegram/` расположен минимальный transport baseline:
 - polling adapter;
 - runtime-обработчик текстовых сообщений;
 - allowlist gate;
-- безопасная текстовая заглушка.
+- делегирование policy-решений в `src/services/safety/`.
 
-Без продуктовой логики, без webhook и без расширенных команд.
+Transport-слой не должен принимать содержательные policy-решения.

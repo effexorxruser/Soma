@@ -1,7 +1,8 @@
 import type { Telegraf } from 'telegraf';
 
 import type { AppConfig } from '../../config/env.js';
-import { ACCESS_DENIED_REPLY, SAFE_PLACEHOLDER_REPLY } from './messages.js';
+import { evaluateSafetyPolicy } from '../../services/safety/policy.js';
+import { ACCESS_DENIED_REPLY } from './messages.js';
 import { isUserAllowed } from './gate.js';
 
 export function registerTelegramRuntime(bot: Telegraf, config: AppConfig): void {
@@ -14,6 +15,7 @@ export function registerTelegramRuntime(bot: Telegraf, config: AppConfig): void 
       return;
     }
 
-    await ctx.reply(SAFE_PLACEHOLDER_REPLY);
+    const decision = evaluateSafetyPolicy({ text: ctx.message.text });
+    await ctx.reply(decision.responseText);
   });
 }
