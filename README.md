@@ -5,6 +5,43 @@ Soma — ранний open-source проект Telegram-first бота для п
 Проект намеренно развивается спокойно: без обещаний «магического AI», с явными границами и с приоритетом безопасности над «эффектностью».
 
 ## Для кого проект
+На текущем этапе реализован **Public Beta Kernel** поверх safety baseline:
+- централизованный `config`-слой с валидацией env;
+- polling-based Telegram adapter для локальной разработки;
+- access gate (`ACCESS_MODE=open|allowlist`) и allowlist;
+- отдельный safety/policy слой с **policy-first contract**;
+- application orchestrator для product-flow;
+- минимальный conversational kernel (deterministic, без медицинских/клинических советов);
+- SQLite persistence для users и daily usage;
+- free-tier дневной лимит сообщений;
+- команды `/start`, `/help`, `/limits`.
+
+## Flow (policy-first)
+
+```text
+Telegram text input
+-> access gate
+-> normalize
+-> orchestrator
+   -> safety policy
+   -> if blocked: policy reply
+   -> if allowed: usage/quota check
+   -> if quota ok: conversation service + usage increment
+-> user reply
+```
+
+## Quota behavior
+
+- План по умолчанию: `free`.
+- Лимит определяется `FREE_DAILY_MESSAGE_LIMIT`.
+- Счетчик usage хранится по ключу `user_id + date_key (UTC YYYY-MM-DD)`.
+- При превышении лимита бот возвращает quota message и не вызывает conversation stage.
+
+## Storage baseline
+
+SQLite схема (`src/storage/schema.sql`):
+- `users` (`user_id`, `plan`, `created_at`, `updated_at`)
+- `daily_usage` (`user_id`, `date_key`, `message_count`)
 
 - Для разработчиков, которым важен аккуратный и проверяемый safety baseline.
 - Для контрибьюторов, кто хочет развивать честный русскоязычный user layer без имитации клинической помощи.
@@ -22,6 +59,8 @@ Soma — ранний open-source проект Telegram-first бота для п
 ## Чего проект сейчас не делает
 
 На текущем этапе в Soma **нет**:
+- `tests/services/safety/policy.test.ts` содержит tabular regression suite.
+- Этот набор кейсов — основная точка проверки непреднамеренных изменений поведения classifier/policy.
 
 - продуктовой conversational-логики;
 - AI-ответов и интеграций с LLM API;
