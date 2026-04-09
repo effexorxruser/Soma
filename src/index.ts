@@ -7,13 +7,12 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const runtime = createAppRuntime(config);
 
+  console.info(`[Soma] Старт в режиме ${config.appEnv}. Polling включен для public beta kernel.`);
   console.info(
-    `[Soma] Старт в режиме ${config.appEnv}. Polling включен для локального baseline-пути.`,
+    `[Soma] Access mode: ${config.accessMode}. Free daily message limit: ${config.freeDailyMessageLimit}.`,
   );
 
-  if (config.telegramAllowedUserIds.length === 0) {
-    console.info('[Soma] Allowlist не задан: бот отвечает всем входящим пользователям.');
-  } else {
+  if (config.accessMode === 'allowlist') {
     console.info(
       `[Soma] Allowlist включен: разрешено пользователей — ${config.telegramAllowedUserIds.length}.`,
     );
