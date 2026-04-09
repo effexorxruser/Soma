@@ -1,22 +1,35 @@
 import { classifyInput } from './classifier.js';
 import { getPolicyMessage } from './messages.js';
-import type { PolicyDecision, PolicyInput, PolicyOutcome } from './types.js';
+import type { InputCategory, NormalizedInputContext, PolicyDecision, PolicyOutcome } from './types.js';
 
-export function evaluateSafetyPolicy(input: PolicyInput): PolicyDecision {
-  const category = classifyInput(input.text);
-
-  const outcome: PolicyOutcome =
-    category === 'neutral_message'
-      ? 'allow_placeholder_response'
-      : category === 'capability_request'
-        ? 'refuse_capability_boundary'
-        : category === 'medical_or_therapy_request'
-          ? 'refuse_medical_boundary'
-          : 'unsupported_input_fallback';
+export function evaluateSafetyPolicy(context: NormalizedInputContext): PolicyDecision {
+  const classification = classifyInput(context);
+  const outcome = mapClassificationToOutcome(classification);
 
   return {
-    category,
+    classification,
     outcome,
-    responseText: getPolicyMessage(outcome),
+    response: {
+      text: getPolicyMessage(outcome),
+    },
+    routing: {
+      allowFutureConversationalStage: classification === 'neutral_message',
+    },
   };
+}
+
+function mapClassificationToOutcome(classification: InputCategory): PolicyOutcome {
+  if (classification === 'neutral_message') {
+    return 'allow_placeholder_response';
+  }
+
+  if (classification === 'capability_request') {
+    return 'refuse_capability_boundary';
+  }
+
+  if (classification === 'medical_or_therapy_request') {
+    return 'refuse_medical_boundary';
+  }
+
+  return 'unsupported_input_fallback';
 }

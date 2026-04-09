@@ -8,29 +8,35 @@
   Централизованная загрузка env и валидация обязательных параметров запуска.
 
 - **bot/telegram (`src/bot/telegram/`)**  
-  Минимальный transport layer для polling: adapter, runtime-обработчик и allowlist gate.
+  Тонкий transport layer для polling:
+  - принимает вход;
+  - применяет allowlist gate;
+  - нормализует input context;
+  - вызывает policy-first contract;
+  - отправляет response payload.
 
 - **services/safety (`src/services/safety/`)**  
-  Safety/policy слой между transport и будущей conversational-логикой:
-  - rule-based классификация входящего текста;
-  - policy outcomes;
-  - безопасные fallback-ответы.
+  Policy-first слой:
+  - `types.ts` — normalized input / policy decision contract;
+  - `classifier.ts` — rule-based классификация;
+  - `policy.ts` — decision model;
+  - `messages.ts` — безопасные fallback-тексты;
+  - `contract.ts` — стабильный вход для transport и будущих этапов.
 
 - **core (`src/core/`)**  
   Bootstrap runtime: связывает config и transport, управляет стартом/остановкой.
 
-- **types (`src/types/`)**  
-  Общие типы проекта.
-
 - **tests (`tests/`)**  
-  Тесты конфигурации, allowlist и safety/policy поведения.
+  Тесты конфигурации, allowlist и policy-first contract.
 
-- **docs (`docs/`)**  
-  Краткая документация проекта.
+## Текущий flow
 
-## Минимальный runtime flow
+env -> config -> startup -> telegram polling -> allowlist gate -> normalize input -> policy evaluation -> response payload -> transport send
 
-env -> config -> startup -> telegram polling -> allowlist gate -> policy evaluation -> safe fallback response
+## Принцип расширения
+
+Future conversational logic может появиться только после policy.
+Direct path transport -> future logic без policy не допускается.
 
 ## Текущие ограничения
 

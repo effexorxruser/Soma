@@ -1,9 +1,12 @@
 import type { Telegraf } from 'telegraf';
 
 import type { AppConfig } from '../../config/env.js';
-import { evaluateSafetyPolicy } from '../../services/safety/policy.js';
+import { createPolicyFirstContract } from '../../services/safety/contract.js';
 import { ACCESS_DENIED_REPLY } from './messages.js';
 import { isUserAllowed } from './gate.js';
+import { normalizeTelegramTextContext } from './normalize.js';
+
+const policyContract = createPolicyFirstContract();
 
 export function registerTelegramRuntime(bot: Telegraf, config: AppConfig): void {
   bot.on('text', async (ctx) => {
@@ -15,7 +18,9 @@ export function registerTelegramRuntime(bot: Telegraf, config: AppConfig): void 
       return;
     }
 
-    const decision = evaluateSafetyPolicy({ text: ctx.message.text });
-    await ctx.reply(decision.responseText);
+    const normalizedContext = normalizeTelegramTextContext(ctx);
+    const decision = policyContract.evaluate(normalizedContext);
+
+    await ctx.reply(decision.response.text);
   });
 }

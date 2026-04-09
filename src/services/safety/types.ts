@@ -10,12 +10,30 @@ export type InputCategory =
   | 'medical_or_therapy_request'
   | 'unknown_or_empty';
 
-export interface PolicyInput {
-  text: string | undefined;
+export type MessageSource = 'telegram';
+
+export type MessageKind = 'text';
+
+export interface NormalizedInputContext {
+  source: MessageSource;
+  messageKind: MessageKind;
+  text: string;
+  userId: number | null;
+  username?: string;
+  receivedAt?: Date;
+}
+
+export interface PolicyResponsePayload {
+  text: string;
+}
+
+export interface PolicyRouting {
+  allowFutureConversationalStage: boolean;
 }
 
 export interface PolicyDecision {
-  category: InputCategory;
+  classification: InputCategory;
   outcome: PolicyOutcome;
-  responseText: string;
+  response: PolicyResponsePayload;
+  routing: PolicyRouting;
 }

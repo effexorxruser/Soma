@@ -1,4 +1,4 @@
-import type { InputCategory } from './types.js';
+import type { InputCategory, NormalizedInputContext } from './types.js';
 
 const MEDICAL_KEYWORDS = [
   'диагноз',
@@ -24,7 +24,9 @@ const CAPABILITY_KEYWORDS = [
   'экстренная помощь',
 ];
 
-export function classifyInput(text: string | undefined): InputCategory {
+export function classifyInput(context: NormalizedInputContext): InputCategory {
+  const text = context.text;
+
   if (!text || text.trim().length === 0) {
     return 'unknown_or_empty';
   }
