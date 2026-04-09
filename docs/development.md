@@ -20,24 +20,22 @@ npm run format
 
 ## Где находится policy-first contract
 
-- Контракт и типы: `src/services/safety/types.ts`, `src/services/safety/contract.ts`
-- Классификация и policy: `src/services/safety/classifier.ts`, `src/services/safety/policy.ts`
-- User-facing fallback-тексты: `src/services/safety/messages.ts`
+- Контракт/типы: `src/services/safety/contract.ts`, `src/services/safety/types.ts`
+- Классификация/решения: `src/services/safety/classifier.ts`, `src/services/safety/policy.ts`
+- Fallback-тексты: `src/services/safety/messages.ts`
 
-## Как расширять без поломки transport
+## Как расширять rule sets безопасно
 
-1. Добавляйте новые response-path через policy слой, а не через transport.
-2. Если нужен новый outcome/ветка, сначала обновляйте contract types.
-3. Только после policy можно подключать будущую conversational stage.
-4. Прямое подключение transport -> conversational logic без policy запрещено.
+1. Сначала фиксируйте приоритеты (`medical > capability > unknown > neutral`).
+2. Новые эвристики добавляйте в classifier без вероятностных score-моделей.
+3. Любая новая эвристика должна сопровождаться регрессионным тестом.
+4. Новые user-facing response-path нельзя добавлять напрямую в transport.
+5. Новые conversational stages нельзя подключать в обход policy.
 
-## Как тестировать policy behavior
+## Регрессионные тесты classifier/policy
 
-- `tests/services/safety/policy.test.ts` — classification + decision + routing.
-- `tests/bot/telegram-normalize.test.ts` — boundary нормализации transport input.
-- `tests/bot/allowlist.test.ts` — отдельная проверка access gate.
-
-## Важно
-
-Polling используется только как локальный baseline transport-путь.
-Webhook/deployment, OpenAI и продуктовая conversational-логика на этом этапе не реализуются.
+- `tests/services/safety/policy.test.ts` содержит:
+  - mixed-input приоритеты;
+  - ambiguous/short/noisy кейсы;
+  - default-safe fallback;
+  - согласованность classification -> outcome -> response -> routing.

@@ -4,4 +4,5 @@
 - Не имитировать медицинскую/клиническую помощь и кризисные сервисы.
 - Transport-слой не принимает policy-решения, только делегирует в safety/policy layer.
 - Любой новый user-facing response path должен проходить через policy-first contract.
-- Transport должен оставаться тонким и предсказуемым.
+- Ambiguous/mixed input должен разрешаться в более безопасную boundary-ветку.
+- Новые classifier heuristics должны сопровождаться регрессионным тестом.

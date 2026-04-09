@@ -8,39 +8,31 @@
   Централизованная загрузка env и валидация обязательных параметров запуска.
 
 - **bot/telegram (`src/bot/telegram/`)**  
-  Тонкий transport layer для polling:
-  - принимает вход;
-  - применяет allowlist gate;
-  - нормализует input context;
-  - вызывает policy-first contract;
-  - отправляет response payload.
+  Тонкий transport layer: receive -> allowlist -> normalize -> policy -> send.
 
 - **services/safety (`src/services/safety/`)**  
   Policy-first слой:
   - `types.ts` — normalized input / policy decision contract;
-  - `classifier.ts` — rule-based классификация;
-  - `policy.ts` — decision model;
+  - `classifier.ts` — rule-based классификация с приоритетами;
+  - `policy.ts` — mapping classification -> decision/outcome;
   - `messages.ts` — безопасные fallback-тексты;
   - `contract.ts` — стабильный вход для transport и будущих этапов.
 
-- **core (`src/core/`)**  
-  Bootstrap runtime: связывает config и transport, управляет стартом/остановкой.
+## Classification priorities
 
-- **tests (`tests/`)**  
-  Тесты конфигурации, allowlist и policy-first contract.
+Детерминированный порядок:
+1. medical boundary
+2. capability boundary
+3. unknown/fallback
+4. neutral
+
+Mixed-input проходит через этот порядок без вероятностных оценок.
 
 ## Текущий flow
 
-env -> config -> startup -> telegram polling -> allowlist gate -> normalize input -> policy evaluation -> response payload -> transport send
+env -> config -> startup -> telegram polling -> allowlist gate -> normalize input -> classifier -> policy decision -> response payload -> transport send
 
 ## Принцип расширения
 
-Future conversational logic может появиться только после policy.
+Future conversational stage допускается только после безопасного policy result.
 Direct path transport -> future logic без policy не допускается.
-
-## Текущие ограничения
-
-- Нет OpenAI/LLM routing.
-- Нет базы данных и хранения состояния.
-- Нет webhook и production deployment-пути.
-- Нет реальных сценариев психологической/медицинской помощи.

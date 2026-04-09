@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyInput } from '../../../src/services/safety/classifier.js';
+import { CLASSIFICATION_PRIORITIES, classifyInput } from '../../../src/services/safety/classifier.js';
 import { createPolicyFirstContract } from '../../../src/services/safety/contract.js';
 import { getPolicyMessage } from '../../../src/services/safety/messages.js';
 import { evaluateSafetyPolicy } from '../../../src/services/safety/policy.js';
-import type { NormalizedInputContext } from '../../../src/services/safety/types.js';
+import type { InputCategory, NormalizedInputContext } from '../../../src/services/safety/types.js';
 
 function makeContext(text: string): NormalizedInputContext {
   return {
@@ -16,27 +16,70 @@ function makeContext(text: string): NormalizedInputContext {
   };
 }
 
-describe('safety classifier', () => {
-  it('определяет медицинский/терапевтический запрос', () => {
-    expect(classifyInput(makeContext('Подскажи дозировку лекарства'))).toBe('medical_or_therapy_request');
-  });
-
-  it('определяет запрос за границей возможностей', () => {
-    expect(classifyInput(makeContext('Проанализируй меня и дай точный план'))).toBe(
+describe('safety classifier priorities', () => {
+  it('фиксирует детерминированный порядок приоритетов', () => {
+    expect(CLASSIFICATION_PRIORITIES).toEqual([
+      'medical_or_therapy_request',
       'capability_request',
-    );
+      'unknown_or_empty',
+      'neutral_message',
+    ]);
   });
 
-  it('возвращает neutral для обычного текста', () => {
-    expect(classifyInput(makeContext('Привет, это тестовое сообщение'))).toBe('neutral_message');
+  it('medical + capability => medical приоритет', () => {
+    const text = 'Проанализируй и назначь лечение, укажи дозировку';
+    expect(classifyInput(makeContext(text))).toBe('medical_or_therapy_request');
   });
 
-  it('возвращает unknown для пустого текста', () => {
-    expect(classifyInput(makeContext('   '))).toBe('unknown_or_empty');
+  it('medical + noisy => medical приоритет', () => {
+    const text = '### дозировка ???';
+    expect(classifyInput(makeContext(text))).toBe('medical_or_therapy_request');
+  });
+
+  it('capability + noisy => capability приоритет', () => {
+    const text = '!!! проанализируй ???';
+    expect(classifyInput(makeContext(text))).toBe('capability_request');
+  });
+
+  it('neutral + weak ambiguous marker => unknown_or_empty (safe fallback)', () => {
+    const text = 'план?';
+    expect(classifyInput(makeContext(text))).toBe('unknown_or_empty');
+  });
+
+  it('короткий noisy input c risk-like keyword сохраняет boundary', () => {
+    const text = 'лекар?';
+    expect(classifyInput(makeContext(text))).toBe('medical_or_therapy_request');
   });
 });
 
-describe('policy-first contract', () => {
+describe('safety classifier default-safe behavior', () => {
+  it('пустой ввод => unknown_or_empty', () => {
+    expect(classifyInput(makeContext('   '))).toBe('unknown_or_empty');
+  });
+
+  it('шумный ввод без явных boundary ключей => unknown_or_empty', () => {
+    expect(classifyInput(makeContext('...!!!123'))).toBe('unknown_or_empty');
+  });
+
+  it('неопределенный короткий ввод => unknown_or_empty', () => {
+    expect(classifyInput(makeContext('?'))).toBe('unknown_or_empty');
+  });
+
+  it('обычный нейтральный текст => neutral_message', () => {
+    expect(classifyInput(makeContext('Привет, это обычное сообщение без специальных запросов'))).toBe(
+      'neutral_message',
+    );
+  });
+});
+
+describe('policy-first contract consistency', () => {
+  const outcomeByCategory: Record<InputCategory, string> = {
+    medical_or_therapy_request: 'refuse_medical_boundary',
+    capability_request: 'refuse_capability_boundary',
+    unknown_or_empty: 'unsupported_input_fallback',
+    neutral_message: 'allow_placeholder_response',
+  };
+
   it('контракт возвращает типизированный decision через evaluate', () => {
     const contract = createPolicyFirstContract();
     const decision = contract.evaluate(makeContext('Привет'));
@@ -47,27 +90,20 @@ describe('policy-first contract', () => {
     expect(decision.routing.allowFutureConversationalStage).toBe(true);
   });
 
-  it('для capability request возвращает boundary refusal', () => {
-    const decision = evaluateSafetyPolicy(makeContext('Дай точный план и гарантию'));
+  it('classification -> outcome -> response -> routing согласованы для boundary и fallback кейсов', () => {
+    const cases: Array<{ text: string; category: InputCategory; futureAllowed: boolean }> = [
+      { text: 'Назначь лечение', category: 'medical_or_therapy_request', futureAllowed: false },
+      { text: 'Проанализируй меня', category: 'capability_request', futureAllowed: false },
+      { text: '??', category: 'unknown_or_empty', futureAllowed: false },
+    ];
 
-    expect(decision.outcome).toBe('refuse_capability_boundary');
-    expect(decision.response.text).toBe(getPolicyMessage('refuse_capability_boundary'));
-    expect(decision.routing.allowFutureConversationalStage).toBe(false);
-  });
+    for (const testCase of cases) {
+      const decision = evaluateSafetyPolicy(makeContext(testCase.text));
 
-  it('для medical request возвращает medical boundary refusal', () => {
-    const decision = evaluateSafetyPolicy(makeContext('Назначь лечение и лекарство'));
-
-    expect(decision.outcome).toBe('refuse_medical_boundary');
-    expect(decision.response.text).toBe(getPolicyMessage('refuse_medical_boundary'));
-    expect(decision.routing.allowFutureConversationalStage).toBe(false);
-  });
-
-  it('для неподдерживаемого ввода возвращает fallback', () => {
-    const decision = evaluateSafetyPolicy(makeContext(''));
-
-    expect(decision.outcome).toBe('unsupported_input_fallback');
-    expect(decision.response.text).toBe(getPolicyMessage('unsupported_input_fallback'));
-    expect(decision.routing.allowFutureConversationalStage).toBe(false);
+      expect(decision.classification).toBe(testCase.category);
+      expect(decision.outcome).toBe(outcomeByCategory[testCase.category]);
+      expect(decision.response.text).toBe(getPolicyMessage(decision.outcome));
+      expect(decision.routing.allowFutureConversationalStage).toBe(testCase.futureAllowed);
+    }
   });
 });
