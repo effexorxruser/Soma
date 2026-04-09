@@ -1,19 +1,20 @@
-import type { AppContext, AppEnv } from '../types/index.js';
+import type { AppConfig } from '../config/env.js';
+import { createTelegramAdapter } from '../bot/telegram/adapter.js';
 
-export function createAppContext(envValue: string | undefined): AppContext {
-  const normalizedEnv = normalizeEnv(envValue);
-
-  return {
-    appName: 'Soma',
-    environment: normalizedEnv,
-    startedAt: new Date(),
-  };
+export interface AppRuntime {
+  start: () => Promise<void>;
+  stop: () => Promise<void>;
 }
 
-function normalizeEnv(value: string | undefined): AppEnv {
-  if (value === 'dev' || value === 'test' || value === 'prod') {
-    return value;
-  }
+export function createAppRuntime(config: AppConfig): AppRuntime {
+  const telegramAdapter = createTelegramAdapter(config);
 
-  return 'local';
+  return {
+    start: async () => {
+      await telegramAdapter.start();
+    },
+    stop: async () => {
+      await telegramAdapter.stop();
+    },
+  };
 }

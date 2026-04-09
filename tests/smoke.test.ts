@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { createAppContext } from '../src/core/app.js';
+import { loadConfig } from '../src/config/env.js';
 
-describe('baseline smoke', () => {
-  it('создает контекст приложения с безопасным env по умолчанию', () => {
-    const context = createAppContext(undefined);
+describe('startup smoke', () => {
+  it('загружает минимальную конфигурацию для baseline runtime', () => {
+    const config = loadConfig({
+      APP_ENV: 'local',
+      TELEGRAM_BOT_TOKEN: 'test-token',
+      TELEGRAM_ALLOWED_USER_IDS: '',
+      LOG_LEVEL: 'info',
+    });
 
-    expect(context.appName).toBe('Soma');
-    expect(context.environment).toBe('local');
+    expect(config.appEnv).toBe('local');
+    expect(config.telegramBotToken).toBe('test-token');
+    expect(config.telegramAllowedUserIds).toEqual([]);
   });
 });

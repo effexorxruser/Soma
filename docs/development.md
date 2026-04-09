@@ -1,4 +1,4 @@
-# Разработка Soma (baseline)
+# Разработка Soma (transport/config baseline)
 
 ## Установка зависимостей
 
@@ -6,32 +6,44 @@
 npm install
 ```
 
-## Основные команды
+## Локальный запуск
 
-```bash
-npm run dev    # запуск в режиме разработки (watch)
-npm run build  # компиляция TypeScript в dist/
-npm run start  # запуск собранной версии
-npm run test   # smoke-тесты
-npm run lint   # проверка кода ESLint
-npm run format # форматирование Prettier
-```
-
-## Работа с .env
-
-1. Скопируйте шаблон:
+1. Создайте `.env` из шаблона:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Заполните значения при необходимости локальной разработки.
-3. Не коммитьте `.env` и любые секреты.
+2. Заполните обязательные/опциональные переменные:
 
-## Базовые правила дальнейшей разработки
+- `APP_ENV` — режим (`local` по умолчанию).
+- `TELEGRAM_BOT_TOKEN` — **обязательно** для запуска polling runtime.
+- `TELEGRAM_ALLOWED_USER_IDS` — опциональный список Telegram user id через запятую.
+- `LOG_LEVEL` — базовый уровень логирования (`info` по умолчанию).
 
-- Сначала расширяйте `core` и `types`, затем подключайте интеграции.
-- Не смешивайте transport-логику (`bot`) и прикладные сервисы (`services`).
-- Интеграции добавляйте через адаптеры в `src/integrations/`, без прямой связки с core.
-- Любой новый модуль сопровождайте тестом (минимум smoke/unit).
-- Документируйте важные архитектурные решения в `docs/` по мере развития.
+3. Запустите dev-режим:
+
+```bash
+npm run dev
+```
+
+## Команды
+
+```bash
+npm run build  # компиляция TypeScript в dist/
+npm run start  # запуск собранного runtime
+npm run test   # unit/smoke тесты
+npm run lint   # ESLint
+npm run format # Prettier
+```
+
+## Как тестировать allowlist
+
+- `TELEGRAM_ALLOWED_USER_IDS=` (пусто) -> бот отвечает любому пользователю.
+- `TELEGRAM_ALLOWED_USER_IDS=123,456` -> бот отвечает только указанным user id.
+- Для остальных возвращается короткий нейтральный отказ.
+
+## Важно про polling
+
+Polling используется только как локальный baseline transport-путь.
+Webhook, деплой и production-настройки на этом этапе не реализуются.
