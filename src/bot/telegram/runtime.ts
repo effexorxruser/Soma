@@ -1,17 +1,18 @@
 import type { Telegraf } from 'telegraf';
 
 import type { AppConfig } from '../../config/env.js';
-import { createPolicyFirstContract } from '../../services/safety/contract.js';
+import type { AppOrchestrator } from '../../core/orchestrator.js';
+import { detectSupportedCommand, registerTelegramCommands } from './commands.js';
 import { ACCESS_DENIED_REPLY } from './messages.js';
 import { isUserAllowed } from './gate.js';
 import { normalizeTelegramTextContext } from './normalize.js';
 
-const policyContract = createPolicyFirstContract();
+export function registerTelegramRuntime(bot: Telegraf, config: AppConfig, orchestrator: AppOrchestrator): void {
+  registerTelegramCommands(bot, config, orchestrator);
 
-export function registerTelegramRuntime(bot: Telegraf, config: AppConfig): void {
   bot.on('text', async (ctx) => {
     const userId = ctx.from?.id;
-    const allowed = isUserAllowed(userId, config.telegramAllowedUserIds);
+    const allowed = isUserAllowed(userId, config.telegramAllowedUserIds, config.accessMode);
 
     if (!allowed) {
       await ctx.reply(ACCESS_DENIED_REPLY);
@@ -19,8 +20,12 @@ export function registerTelegramRuntime(bot: Telegraf, config: AppConfig): void 
     }
 
     const normalizedContext = normalizeTelegramTextContext(ctx);
-    const decision = policyContract.evaluate(normalizedContext);
 
-    await ctx.reply(decision.response.text);
+    if (detectSupportedCommand(normalizedContext.text)) {
+      return;
+    }
+    const result = await orchestrator.handleText(normalizedContext);
+
+    await ctx.reply(result.text);
   });
 }
