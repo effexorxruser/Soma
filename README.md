@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/soma-repo-card.png.png" alt="Soma repository card" width="100%">
+</p>
+
 # Soma
 
 ![Soma repository card](./docs/assets/repo-card.svg)
@@ -92,6 +96,10 @@ npm run check
 - [Roadmap](./docs/roadmap.md)
 - [Product principles](./docs/product-principles.md)
 - [Safety boundaries](./docs/safety.md)
+
+### Техническая документация
+
+- [Docs index](./docs/README.md)
 - [Architecture](./docs/architecture.md)
 - [Development](./docs/development.md)
 
