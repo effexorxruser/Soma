@@ -1,24 +1,29 @@
 # Roadmap
 
-## Stage 0 — Foundation (текущий)
+Roadmap консервативный: каждое расширение допускается только при сохранении policy-first contract и regression discipline.
 
-- [x] Базовый Telegram transport pipeline.
-- [x] Policy-first safety contract.
+## Stage 0 — Foundation baseline (текущий)
+
+- [x] Telegram transport + access gate.
+- [x] Policy-first safety слой.
 - [x] Deterministic classifier priorities.
-- [x] Tabular regression suite для classifier/policy.
-- [x] Базовый open-source governance layer (docs, templates, CI).
+- [x] Tabular regression suite для safety/policy.
+- [x] SQLite storage для users и daily usage.
+- [x] Базовый community/governance и CI baseline.
 
 ## Stage 1 — Controlled product baseline
 
-- [ ] Аккуратное расширение user-facing сценариев внутри safety contract.
-- [ ] Небольшие улучшения observability (структурированные логи, базовые метрики качества).
-- [ ] Расширение regression coverage для пограничных и mixed-input случаев.
-- [ ] Улучшение onboarding для внешних контрибьюторов.
+- [ ] Небольшие расширения user-facing сценариев внутри текущих safety-границ.
+- [ ] Укрепление quality gates и test coverage для пограничных случаев.
+- [ ] Улучшение developer experience без смены архитектурного контракта.
 
 ## Stage 2 — Reliability & maintainability
 
-- [ ] Укрепление reliability-практик (стабильность CI, stricter quality gates).
-- [ ] Повышение прозрачности release-процесса.
-- [ ] Дальнейшее развитие продукта только при сохранении safety-first и honest-limits.
+- [ ] Повышение операционной стабильности (CI, release hygiene, observability baseline).
+- [ ] Уточнение долгосрочной модели развития только после валидации Stage 1.
 
-> Roadmap намеренно консервативный: без маркетинговых обещаний и без искусственного раздувания scope.
+## Вне scope до отдельного решения
+
+- Клинический/медицинский функционал.
+- Обход policy-слоя ради прямого «умного ответа».
+- Публичные обещания capability, которой нет в кодовой базе.

@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Сообщить о баге
-labels: bug
+labels: [bug]
 ---
 
 ## Описание
@@ -17,6 +17,10 @@ labels: bug
 ## Ожидаемое поведение
 
 ## Фактическое поведение
+
+## Safety impact
+
+Есть ли риск нарушения policy-first контракта или product boundaries?
 
 ## Окружение
 
