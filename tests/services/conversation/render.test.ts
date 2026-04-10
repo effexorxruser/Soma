@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectConversationProfile } from '../../../src/services/conversation/render.js';
+import { detectConversationProfile, renderStructuredReply } from '../../../src/services/conversation/render.js';
 
 describe('conversation profile detection: normalization', () => {
   const shortNormalizationCases = [
@@ -44,5 +44,34 @@ describe('conversation profile detection: deterministic mixed-signal priority', 
 
   it('does not collapse acknowledgement with continuation into short profile', () => {
     expect(detectConversationProfile('ага, и что дальше делать')).toBe('small_step_request');
+  });
+});
+
+describe('conversation rendering: display compaction is separate from detection normalization', () => {
+  it('keeps user casing in neutral focus echo', () => {
+    const reply = renderStructuredReply('План на Вечер: Дом и Магазин');
+
+    expect(reply).toContain('Вижу ваш контекст: План на Вечер: Дом и Магазин.');
+    expect(reply).not.toContain('Вижу ваш контекст: план на вечер: дом и магазин.');
+  });
+
+  it('keeps mixed latin/cyrillic casing in neutral focus echo', () => {
+    const reply = renderStructuredReply('Сегодня фокус на GitHub и Telegram');
+
+    expect(reply).toContain('Вижу ваш контекст: Сегодня фокус на GitHub и Telegram.');
+    expect(reply).not.toContain('Вижу ваш контекст: сегодня фокус на github и telegram.');
+  });
+
+  it('collapses repeated whitespace but preserves casing for display', () => {
+    const reply = renderStructuredReply('  Сегодня   фокус   на   GitHub   и   Telegram  ');
+
+    expect(reply).toContain('Вижу ваш контекст: Сегодня фокус на GitHub и Telegram.');
+  });
+
+  it('preserves deterministic detection behavior for mixed emotional input', () => {
+    const reply = renderStructuredReply('Привет, Мне Тяжело');
+
+    expect(reply).toContain('тревога и внутреннее напряжение');
+    expect(reply).not.toContain('Вижу ваш контекст:');
   });
 });

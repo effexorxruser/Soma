@@ -66,7 +66,7 @@ export function renderStructuredReply(inputText: string): string {
 }
 
 function compact(value: string): string {
-  const normalized = normalizeConversationInput(value);
+  const normalized = normalizeDisplayInput(value);
 
   if (normalized.length === 0) {
     return '';
@@ -159,6 +159,10 @@ function joinLines(lines: string[]): string {
 
 function normalizeConversationInput(value: string): string {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function normalizeDisplayInput(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
 }
 
 function normalizeShortPhrase(value: string): string {
