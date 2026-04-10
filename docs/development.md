@@ -1,11 +1,11 @@
-# Разработка Soma (transport/config + safety baseline)
+# Разработка Soma
 
 ## Требования
 
 - Node.js 20+
 - npm 10+
 
-## Установка и запуск
+## Быстрый старт
 
 ```bash
 npm install
@@ -18,51 +18,41 @@ npm run dev
 Обязательные:
 
 - `TELEGRAM_BOT_TOKEN` — токен Telegram-бота.
+- `DATABASE_PATH` — путь к SQLite базе.
 
 Опциональные:
 
-- `APP_ENV` (`local` | `dev` | `test` | `prod`, по умолчанию `local`)
-- `LOG_LEVEL` (`debug` | `info` | `warn` | `error`, по умолчанию `info`)
-- `TELEGRAM_ALLOWED_USER_IDS` — список разрешенных user id через запятую
+- `APP_ENV` (`local` | `dev` | `test` | `prod`, default: `local`)
+- `LOG_LEVEL` (`debug` | `info` | `warn` | `error`, default: `info`)
+- `ACCESS_MODE` (`open` | `allowlist`, default: `allowlist`)
+- `TELEGRAM_ALLOWED_USER_IDS` — CSV положительных user id
+- `FREE_DAILY_MESSAGE_LIMIT` — положительное целое, default: `20`
 
-## Основные команды
+## Скрипты
 
 ```bash
-npm run build
-npm run start
-npm run test
+npm run dev
 npm run lint
-npm run format
+npm run test
+npm run build
 npm run check
 ```
 
-## Runtime path
+## Quality gates для PR
 
-Текущий runtime-path:
+Минимальный baseline перед PR:
 
-`receive -> allowlist -> normalize -> policy -> send`
+1. `npm run lint`
+2. `npm run test`
+3. `npm run build`
 
-Transport-слой делегирует policy-решения в `src/services/safety`.
+## Инварианты, которые нельзя ломать
 
-## Tabular regression suite
+- Transport-слой не принимает policy-решения.
+- User-facing response path проходит через policy-first contract.
+- Deterministic priorities classifier не деградируют.
+- Изменения classifier/policy сопровождаются regression-кейсами.
 
-- Основной regression suite: `tests/services/safety/policy.test.ts`.
-- Каждый кейс в таблице включает: описание, input text, expected classification/outcome и expected future-stage flag.
-- При добавлении новой эвристики добавляйте строку в эту таблицу, а не отдельный фрагментный тест без необходимости.
+## Заметка по package publishing
 
-## Change checklist для правок classifier
-
-Перед коммитом изменений в classifier проверь:
-
-1. Сохранены приоритеты (`medical > capability > unknown > neutral`).
-2. Mixed-input поведение не деградировало.
-3. Если менялись weak-marker эвристики — добавлен negative regression case.
-4. Сохранена contract consistency (`classification -> outcome -> response -> routing`).
-5. Default-safe behavior не ослаблен.
-6. Не появился direct path в future conversational stage там, где его быть не должно.
-
-## Правила
-
-- Нельзя чинить один false positive ценой слома mixed-input или priority behavior.
-- Новые classifier heuristics должны сопровождаться regression case в tabular suite.
-- Policy-first contract и deterministic priorities сохраняются как инвариант.
+В `package.json` установлен `"private": true` осознанно: репозиторий является application baseline, а не npm-пакетом для публикации.

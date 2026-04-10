@@ -1,22 +1,35 @@
 # Soma
 
-Soma — ранний open-source проект Telegram-first бота для поддержки и самоорганизации с **safety-first контрактом**.
+Soma — open-source Telegram-first проект на Node.js + TypeScript с **safety-first** и **policy-first** контрактом.
 
-Проект намеренно развивается спокойно: без обещаний «магического AI», с явными границами и с приоритетом безопасности над «эффектностью».
+Проект находится на раннем этапе (**Public Beta Kernel**) и сознательно сохраняет ограниченный scope: без hype, без имитации клинической помощи и без обещаний того, чего в коде нет.
 
-## Для кого проект
-На текущем этапе реализован **Public Beta Kernel** поверх safety baseline:
-- централизованный `config`-слой с валидацией env;
-- polling-based Telegram adapter для локальной разработки;
-- access gate (`ACCESS_MODE=open|allowlist`) и allowlist;
-- отдельный safety/policy слой с **policy-first contract**;
-- application orchestrator для product-flow;
-- минимальный conversational kernel (deterministic, без медицинских/клинических советов);
-- SQLite persistence для users и daily usage;
-- free-tier дневной лимит сообщений;
-- команды `/start`, `/help`, `/limits`.
+## Текущий статус проекта
 
-## Flow (policy-first)
+На **2026-04-09** в репозитории реализованы:
+
+- Telegram transport на polling (`telegraf`);
+- access gate (`ACCESS_MODE=open|allowlist` + `TELEGRAM_ALLOWED_USER_IDS`);
+- нормализация входящего текста;
+- policy-first safety слой с детерминированной классификацией и маппингом в outcome;
+- orchestrator, который сначала применяет policy, затем quota, затем conversation;
+- SQLite persistence для профилей пользователей и daily usage;
+- free-tier суточный лимит сообщений;
+- команды `/start`, `/help`, `/limits`;
+- regression suite для safety/policy и env/config.
+
+## Product boundaries (явные границы)
+
+Soma на текущем этапе:
+
+- **не** оказывает медицинскую, психотерапевтическую или кризисную помощь;
+- **не** является системой диагностики или лечения;
+- **не** обходит policy-first слой ради «более полезного» ответа;
+- **не** обещает несуществующие AI-возможности или скрытые продуктовые сценарии.
+
+Любой user-facing ответ должен проходить через safety/policy contract.
+
+## Архитектурный поток (упрощенно)
 
 ```text
 Telegram text input
@@ -30,63 +43,7 @@ Telegram text input
 -> user reply
 ```
 
-## Quota behavior
-
-- План по умолчанию: `free`.
-- Лимит определяется `FREE_DAILY_MESSAGE_LIMIT`.
-- Счетчик usage хранится по ключу `user_id + date_key (UTC YYYY-MM-DD)`.
-- При превышении лимита бот возвращает quota message и не вызывает conversation stage.
-
-## Storage baseline
-
-SQLite схема (`src/storage/schema.sql`):
-- `users` (`user_id`, `plan`, `created_at`, `updated_at`)
-- `daily_usage` (`user_id`, `date_key`, `message_count`)
-
-- Для разработчиков, которым важен аккуратный и проверяемый safety baseline.
-- Для контрибьюторов, кто хочет развивать честный русскоязычный user layer без имитации клинической помощи.
-- Для команд, которым нужен прозрачный пример policy-first архитектуры на ранней стадии.
-
-## Что уже реализовано
-
-- Централизованный `config`-слой с валидацией env.
-- Polling-based Telegram transport adapter для локальной разработки.
-- Allowlist gate для базового контроля доступа.
-- Safety/policy слой с **policy-first contract**.
-- Rule-based classifier с детерминированными приоритетами.
-- Tabular regression suite как исполняемая спецификация safety/policy поведения.
-
-## Чего проект сейчас не делает
-
-На текущем этапе в Soma **нет**:
-- `tests/services/safety/policy.test.ts` содержит tabular regression suite.
-- Этот набор кейсов — основная точка проверки непреднамеренных изменений поведения classifier/policy.
-
-- продуктовой conversational-логики;
-- AI-ответов и интеграций с LLM API;
-- базы данных и долговременного состояния диалога;
-- webhook/deployment инфраструктуры;
-- медицинской/клинической функциональности.
-
-## Принципы проекта
-
-- **Safety-first**: transport-слой не обходит policy-слой.
-- **Honesty over hype**: только реальные возможности текущего stage.
-- **Calm UX**: спокойный, неагрессивный, без ложной авторитетности.
-
-## Текущий stage
-
-Сейчас проект находится на **Stage 0 (foundation baseline)**: проверяемая архитектурная основа, safety-контракт и регрессии, но без расширенного продуктового слоя.
-
-## Структура репозитория
-
-- `src/config` — загрузка и валидация конфигурации.
-- `src/bot/telegram` — transport pipeline (receive → allowlist → normalize → policy → send).
-- `src/services/safety` — classifier, policy mapping и safety messages.
-- `tests/services/safety` — tabular regression suite.
-- `docs` — архитектура, разработка, vision/roadmap и принципы.
-
-## Быстрый локальный запуск
+## Быстрый старт
 
 ```bash
 npm install
@@ -96,47 +53,41 @@ npm run dev
 
 Минимально обязательный env:
 
-- `TELEGRAM_BOT_TOKEN` — токен Telegram-бота.
+- `TELEGRAM_BOT_TOKEN`
 
-Опционально:
+Остальные параметры — в `.env.example` и `docs/development.md`.
 
-- `APP_ENV` (`local` | `dev` | `test` | `prod`, по умолчанию `local`)
-- `LOG_LEVEL` (`debug` | `info` | `warn` | `error`, по умолчанию `info`)
-- `TELEGRAM_ALLOWED_USER_IDS` (CSV положительных integer user id)
+## Команды разработки
 
-## Quality gates
-
-Перед PR ожидается зеленый проход:
-
-- `npm run lint`
-- `npm run test`
-- `npm run build`
-- `npm run check`
-
-## Как можно помочь проекту
-
-1. Прочитать [CONTRIBUTING.md](./CONTRIBUTING.md).
-2. Проверить открытые issue и выбрать задачу.
-3. При изменениях classifier/policy — обязательно добавить/обновить regression cases в табличном suite.
-4. Для security/privacy/safety проблем использовать приватный канал из [SECURITY.md](./SECURITY.md).
+```bash
+npm run lint
+npm run test
+npm run build
+npm run check
+```
 
 ## Документация
+
+### Product и safety
 
 - [Vision](./docs/vision.md)
 - [Roadmap](./docs/roadmap.md)
 - [Product principles](./docs/product-principles.md)
 - [Safety boundaries](./docs/safety.md)
+
+### Техническая документация
+
+- [Docs index](./docs/README.md)
 - [Architecture](./docs/architecture.md)
 - [Development](./docs/development.md)
 
-## Governance
+### Community и governance
 
-- Лицензия: [MIT](./LICENSE)
-- Правила вклада: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- Security-процесс: [SECURITY.md](./SECURITY.md)
-- Кодекс поведения: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [SECURITY.md](./SECURITY.md)
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- [LICENSE (MIT)](./LICENSE)
 
-## Важное ограничение
+## Заметка по `package.json#private`
 
-**Soma не заменяет врача, психиатра, психотерапевта или кризисные службы помощи.**
-Проект не предназначен для диагностики, лечения или экстренной поддержки.
+В `package.json` установлен `"private": true` осознанно, чтобы исключить случайную публикацию незрелого baseline-пакета в npm.
