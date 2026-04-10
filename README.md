@@ -4,8 +4,6 @@
 
 # Soma
 
-![Soma repository card](./docs/assets/repo-card.svg)
-
 Soma — ранний open-source Telegram-first проект на Node.js + TypeScript с **safety-first** и **policy-first** контрактом.
 
 Проект развивается консервативно: без hype, без имитации клинической помощи и без обещаний функциональности, которой нет в коде.
