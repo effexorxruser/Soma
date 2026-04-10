@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createAppOrchestrator } from '../../src/core/orchestrator.js';
 import { createConversationService } from '../../src/services/conversation/service.js';
+import { detectConversationProfile } from '../../src/services/conversation/render.js';
 import { createPolicyFirstContract } from '../../src/services/safety/contract.js';
 import { getPolicyMessage } from '../../src/services/safety/messages.js';
 import type { InputCategory, PolicyOutcome } from '../../src/services/safety/types.js';
@@ -15,6 +16,7 @@ interface Scenario {
   expectedOutcome: PolicyOutcome;
   expectedRoute: 'policy' | 'conversation';
   expectedKind: 'policy' | 'conversation';
+  expectedProfile: string | null;
   expectedSubstrings: string[];
   forbiddenSubstrings?: string[];
   maxLines?: number;
@@ -29,6 +31,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'anxiety',
     expectedSubstrings: ['тревога', 'ближайших 10 минут', 'Маленький шаг'],
     minLines: 3,
     maxLines: 4,
@@ -40,6 +43,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'overload',
     expectedSubstrings: ['перегруз', 'один приоритет', 'Маленький шаг'],
     minLines: 3,
     maxLines: 4,
@@ -51,6 +55,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'confusion',
     expectedSubstrings: ['Похоже на путаницу', 'один понятный фокус', 'Маленький шаг'],
     minLines: 3,
     maxLines: 4,
@@ -62,6 +67,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'soft_state_review',
     expectedSubstrings: ['мягко разобрать состояние', 'без лишних интерпретаций', 'Маленький шаг'],
     minLines: 3,
     maxLines: 4,
@@ -73,6 +79,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'small_step_request',
     expectedSubstrings: ['только один шаг', 'до 10 минут', 'Маленький шаг'],
     minLines: 3,
     maxLines: 4,
@@ -84,6 +91,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'neutral',
     expectedSubstrings: ['Вижу ваш контекст', 'один фокус', 'Маленький шаг'],
     minLines: 3,
     maxLines: 4,
@@ -95,6 +103,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'neutral',
     expectedSubstrings: ['Вижу ваш контекст', 'Маленький шаг'],
     forbiddenSubstrings: ['кризис', 'диагноз', 'лечение'],
     minLines: 3,
@@ -107,6 +116,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'neutral',
     expectedSubstrings: ['Вижу ваш контекст', 'Маленький шаг'],
     forbiddenSubstrings: ['не поддерживает этот тип запроса'],
     minLines: 3,
@@ -119,9 +129,98 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
-    expectedSubstrings: ['Понял вас.', 'уточнить в одном коротком предложении'],
+    expectedProfile: 'ambiguous_short',
+    expectedSubstrings: ['уточнить одним коротким предложением'],
+    forbiddenSubstrings: ['Понял вас.'],
+    minLines: 1,
+    maxLines: 1,
+  },
+  {
+    name: 'greeting short: приветствие без ambiguous-шаблона',
+    input: 'Привет',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'greeting_short',
+    expectedSubstrings: ['Здравствуйте.', 'можем спокойно продолжить'],
+    forbiddenSubstrings: ['Понял вас.', 'уточнить одним коротким предложением'],
     minLines: 2,
     maxLines: 2,
+  },
+  {
+    name: 'greeting short: формальное приветствие',
+    input: 'Здравствуйте',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'greeting_short',
+    expectedSubstrings: ['Здравствуйте.', 'можем спокойно продолжить'],
+    forbiddenSubstrings: ['Понял вас.'],
+    minLines: 2,
+    maxLines: 2,
+  },
+  {
+    name: 'acknowledgement short: ок',
+    input: 'Ок',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'acknowledgement_short',
+    expectedSubstrings: ['Принято.', 'продолжайте в одном коротком сообщении'],
+    forbiddenSubstrings: ['уточнить одним коротким предложением'],
+    minLines: 2,
+    maxLines: 2,
+  },
+  {
+    name: 'acknowledgement short: понял',
+    input: 'понял',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'acknowledgement_short',
+    expectedSubstrings: ['Принято.', 'одном коротком сообщении'],
+    minLines: 2,
+    maxLines: 2,
+  },
+  {
+    name: 'acknowledgement short: ясно',
+    input: 'ясно',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'acknowledgement_short',
+    expectedSubstrings: ['Принято.'],
+    minLines: 2,
+    maxLines: 2,
+  },
+  {
+    name: 'ambiguous short: ну да остается minimal',
+    input: 'ну да',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'ambiguous_short',
+    expectedSubstrings: ['уточнить одним коротким предложением'],
+    minLines: 1,
+    maxLines: 1,
+  },
+  {
+    name: 'ambiguous short: мм остается minimal',
+    input: 'мм',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'ambiguous_short',
+    expectedSubstrings: ['уточнить одним коротким предложением'],
+    minLines: 1,
+    maxLines: 1,
   },
   {
     name: 'unknown short noise: policy fallback',
@@ -130,6 +229,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'unsupported_input_fallback',
     expectedRoute: 'policy',
     expectedKind: 'policy',
+    expectedProfile: null,
     expectedSubstrings: [getPolicyMessage('unsupported_input_fallback')],
     minLines: 1,
     maxLines: 2,
@@ -141,6 +241,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'unsupported_input_fallback',
     expectedRoute: 'policy',
     expectedKind: 'policy',
+    expectedProfile: null,
     expectedSubstrings: [getPolicyMessage('unsupported_input_fallback')],
   },
   {
@@ -150,6 +251,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'unsupported_input_fallback',
     expectedRoute: 'policy',
     expectedKind: 'policy',
+    expectedProfile: null,
     expectedSubstrings: [getPolicyMessage('unsupported_input_fallback')],
   },
   {
@@ -159,6 +261,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'refuse_capability_boundary',
     expectedRoute: 'policy',
     expectedKind: 'policy',
+    expectedProfile: null,
     expectedSubstrings: [getPolicyMessage('refuse_capability_boundary')],
   },
   {
@@ -168,6 +271,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'refuse_medical_boundary',
     expectedRoute: 'policy',
     expectedKind: 'policy',
+    expectedProfile: null,
     expectedSubstrings: [getPolicyMessage('refuse_medical_boundary')],
   },
   {
@@ -177,6 +281,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'refuse_medical_boundary',
     expectedRoute: 'policy',
     expectedKind: 'policy',
+    expectedProfile: null,
     expectedSubstrings: [getPolicyMessage('refuse_medical_boundary')],
   },
   {
@@ -186,6 +291,7 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'refuse_capability_boundary',
     expectedRoute: 'policy',
     expectedKind: 'policy',
+    expectedProfile: null,
     expectedSubstrings: [getPolicyMessage('refuse_capability_boundary')],
   },
   {
@@ -195,21 +301,11 @@ const SCENARIOS: Scenario[] = [
     expectedOutcome: 'allow_placeholder_response',
     expectedRoute: 'conversation',
     expectedKind: 'conversation',
+    expectedProfile: 'neutral',
     expectedSubstrings: ['Вижу ваш контекст', 'Маленький шаг'],
     forbiddenSubstrings: ['не поддерживает этот тип запроса'],
     minLines: 3,
     maxLines: 4,
-  },
-  {
-    name: 'very short neutral greeting in conversation path',
-    input: 'Привет',
-    expectedClassification: 'neutral_message',
-    expectedOutcome: 'allow_placeholder_response',
-    expectedRoute: 'conversation',
-    expectedKind: 'conversation',
-    expectedSubstrings: ['Понял вас.', 'уточнить в одном коротком предложении'],
-    minLines: 2,
-    maxLines: 2,
   },
 ];
 
@@ -248,6 +344,9 @@ describe('conversational contract v1: end-to-end golden scenarios', () => {
       expect(policyDecision.classification).toBe(scenario.expectedClassification);
       expect(policyDecision.outcome).toBe(scenario.expectedOutcome);
       expect(policyDecision.routing.allowFutureConversationalStage).toBe(scenario.expectedRoute === 'conversation');
+      if (scenario.expectedProfile) {
+        expect(detectConversationProfile(scenario.input)).toBe(scenario.expectedProfile);
+      }
 
       const result = await orchestrator.handleText(context);
       expect(result.kind).toBe(scenario.expectedKind);
