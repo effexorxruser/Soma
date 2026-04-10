@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Security / Privacy / Safety report (private)
-    url: mailto:security@soma-project.example
-    about: Для чувствительных проблем используйте приватный канал.
+  - name: Private security report
+    url: https://github.com/effexorxruser/Soma/security/advisories/new
+    about: Для security/privacy/safety уязвимостей используйте приватный канал.
