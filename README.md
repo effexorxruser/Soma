@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/soma-repo-card.png" alt="Soma repository card" width="100%">
+</p>
+
 # Soma
 
 Soma — ранний open-source проект Telegram-first бота для поддержки и самоорганизации с **safety-first контрактом**.
