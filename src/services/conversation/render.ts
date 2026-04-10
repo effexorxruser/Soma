@@ -1,6 +1,6 @@
 export function renderStructuredReply(inputText: string): string {
   const compactText = compact(inputText);
-  const profile = detectProfile(compactText);
+  const profile = detectConversationProfile(compactText);
 
   if (profile === 'anxiety') {
     return joinLines([
@@ -42,10 +42,17 @@ export function renderStructuredReply(inputText: string): string {
     ]);
   }
 
+  if (profile === 'greeting_short') {
+    return joinLines(['Здравствуйте.', 'Если хотите, можем спокойно продолжить с одного фокуса.']);
+  }
+
+  if (profile === 'acknowledgement_short') {
+    return joinLines(['Принято.', 'Если нужно, продолжайте в одном коротком сообщении.']);
+  }
+
   if (profile === 'ambiguous_short') {
     return joinLines([
-      'Понял вас.',
-      'Если хотите, можно уточнить в одном коротком предложении, что сейчас самое важное.',
+      'Можно уточнить одним коротким предложением, что сейчас важнее всего.',
     ]);
   }
 
@@ -74,17 +81,39 @@ type ConversationProfile =
   | 'confusion'
   | 'soft_state_review'
   | 'small_step_request'
+  | 'greeting_short'
+  | 'acknowledgement_short'
   | 'ambiguous_short'
   | 'neutral';
 
-function detectProfile(input: string): ConversationProfile {
+const GREETING_SHORT_KEYWORDS = [
+  'привет',
+  'здравствуй',
+  'здравствуйте',
+  'добрый день',
+  'добрый вечер',
+  'доброе утро',
+];
+
+const ACKNOWLEDGEMENT_SHORT_KEYWORDS = [
+  'ок',
+  'окей',
+  'понял',
+  'поняла',
+  'понятно',
+  'ясно',
+  'хорошо',
+  'угу',
+  'ага',
+  'принято',
+];
+
+const AMBIGUOUS_SHORT_KEYWORDS = ['как-то так', 'ну да', 'мм', 'мда', 'хм'];
+
+export function detectConversationProfile(input: string): ConversationProfile {
   const normalized = input.toLowerCase();
 
   if (!normalized) {
-    return 'ambiguous_short';
-  }
-
-  if (normalized.length <= 18 && normalized.split(' ').length <= 3) {
     return 'ambiguous_short';
   }
 
@@ -108,7 +137,29 @@ function detectProfile(input: string): ConversationProfile {
     return 'soft_state_review';
   }
 
+  const isShortInput = normalized.length <= 18 && normalized.split(' ').length <= 3;
+
+  if (isShortInput && matchesShortPhrase(normalized, GREETING_SHORT_KEYWORDS)) {
+    return 'greeting_short';
+  }
+
+  if (isShortInput && matchesShortPhrase(normalized, ACKNOWLEDGEMENT_SHORT_KEYWORDS)) {
+    return 'acknowledgement_short';
+  }
+
+  if (isShortInput && matchesShortPhrase(normalized, AMBIGUOUS_SHORT_KEYWORDS)) {
+    return 'ambiguous_short';
+  }
+
+  if (isShortInput) {
+    return 'ambiguous_short';
+  }
+
   return 'neutral';
+}
+
+function matchesShortPhrase(input: string, phrases: string[]): boolean {
+  return phrases.some((phrase) => input === phrase);
 }
 
 function containsAny(input: string, keywords: string[]): boolean {
