@@ -10,6 +10,10 @@
 - conversation stage может вызываться только после разрешающего policy outcome;
 - contract должен оставаться детерминированным и проверяемым тестами.
 
+Conversational behavior v1 фиксируется отдельно и расширяется только поверх policy-first контура:
+- [`conversational-contract-v1.md`](./conversational-contract-v1.md) — source of truth для `input -> classification -> routing -> response`;
+- `tests/core/conversational-contract.e2e.test.ts` — golden/e2e regression набор на продуктовый ответ.
+
 ## Product boundaries
 
 Soma на текущем этапе:
@@ -33,3 +37,9 @@ Soma на текущем этапе:
 1. Обновления tabular regression suite.
 2. Подтверждения сохранения deterministic priorities.
 3. Подтверждения, что policy-first routing не деградировал.
+
+Изменения conversation shape требуют:
+
+1. Обновления canonical scenario set в `conversational-contract-v1.md`.
+2. Обновления golden/e2e suite.
+3. Проверки, что weak-marker guardrails и anti-hyperreaction кейсы не деградировали.
