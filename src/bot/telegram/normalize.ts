@@ -3,7 +3,8 @@ import type { Context } from 'telegraf';
 import type { NormalizedInputContext } from '../../services/safety/types.js';
 
 export function normalizeTelegramTextContext(ctx: Context): NormalizedInputContext {
-  const text = 'text' in ctx.message ? ctx.message.text : '';
+  const message = ctx.message;
+  const text = message && 'text' in message ? message.text : '';
 
   return {
     source: 'telegram',

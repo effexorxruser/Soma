@@ -19,9 +19,9 @@ export function createSqliteUserRepository(db: DatabaseSync): UserRepository {
     getByUserId: (userId) => {
       const row = db
         .prepare('SELECT user_id, plan, created_at, updated_at FROM users WHERE user_id = ?')
-        .get(userId) as UserRow | undefined;
+        .get(userId);
 
-      return row ? mapRow(row) : null;
+      return isUserRow(row) ? mapRow(row) : null;
     },
     createIfMissing: (userId, plan = 'free') => {
       const now = new Date().toISOString();
@@ -34,11 +34,34 @@ export function createSqliteUserRepository(db: DatabaseSync): UserRepository {
 
       const row = db
         .prepare('SELECT user_id, plan, created_at, updated_at FROM users WHERE user_id = ?')
-        .get(userId) as UserRow;
+        .get(userId);
+
+      if (!isUserRow(row)) {
+        throw new Error('Не удалось загрузить профиль пользователя после upsert.');
+      }
 
       return mapRow(row);
     },
   };
+}
+
+function isUserPlan(value: unknown): value is UserPlan {
+  return value === 'free' || value === 'supporter' || value === 'plus';
+}
+
+function isUserRow(value: unknown): value is UserRow {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const maybeRow = value as Partial<UserRow>;
+
+  return (
+    typeof maybeRow.user_id === 'number' &&
+    isUserPlan(maybeRow.plan) &&
+    typeof maybeRow.created_at === 'string' &&
+    typeof maybeRow.updated_at === 'string'
+  );
 }
 
 function mapRow(row: UserRow): UserProfile {
