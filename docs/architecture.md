@@ -1,30 +1,46 @@
-# Стартовая архитектурная рамка Soma (MVP-путь)
+# Архитектура Soma (текущий baseline)
 
-Документ описывает текущую минимальную архитектуру. Это не финальная схема.
+Документ фиксирует текущее состояние кода без расширения scope.
 
 ## Слои
 
 - **config (`src/config/`)**  
-  Централизованная загрузка env и валидация обязательных параметров запуска.
+  Загрузка env и валидация обязательных параметров.
 
 - **bot/telegram (`src/bot/telegram/`)**  
-  Тонкий transport layer: receive -> allowlist -> normalize -> policy -> send.
+  Transport layer: прием update, access gate, нормализация входа, передача в orchestrator, отправка ответа.
+
+- **core (`src/core/`)**  
+  Сборка runtime зависимостей и orchestrator, который управляет порядком: policy -> usage/quota -> conversation.
 
 - **services/safety (`src/services/safety/`)**  
-  Policy-first слой:
-  - `types.ts` — normalized input / policy decision contract;
-  - `classifier.ts` — rule-based классификация с deterministic priorities;
-  - `policy.ts` — mapping classification -> decision/outcome;
-  - `messages.ts` — безопасные fallback-тексты;
-  - `contract.ts` — стабильный вход для transport и будущих этапов.
+  Policy-first классификация, policy outcome и безопасные response-тексты.
 
-## Regression защита поведения
+- **services/users + services/usage**  
+  Профили пользователя и суточные лимиты.
 
-- `tests/services/safety/policy.test.ts` содержит tabular regression suite и выступает как compact executable-spec classifier поведения.
-- В этом же файле есть contract regression guard для policy-first boundary (форма decision + базовая routing-consistency).
-- Любые изменения classifier должны проходить через regression review по этим кейсам.
+- **services/conversation**  
+  Минимальный deterministic conversational kernel, вызывается только после разрешающего policy решения.
 
-## Принцип расширения
+- **storage (`src/storage/`)**  
+  SQLite и схема таблиц (`users`, `daily_usage`).
 
-Future conversational stage допускается только после безопасного policy result.
-Direct path transport -> future logic без policy не допускается.
+## Базовый runtime flow
+
+```text
+telegram update
+-> gate (open|allowlist)
+-> normalize
+-> orchestrator
+   -> safety policy
+   -> usage/quota
+   -> conversation (если policy allow + quota ok)
+-> reply
+```
+
+## Инварианты архитектуры
+
+1. Transport не принимает policy-решений.
+2. Нет direct route в conversation в обход policy.
+3. Classifier/policy изменения защищаются regression suite.
+4. User-facing слой не использует clinical/medical framing.

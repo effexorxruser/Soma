@@ -1,15 +1,19 @@
 ---
 name: Feature request
 about: Предложить улучшение
-labels: enhancement
+labels: [enhancement]
 ---
 
-## Что хочется улучшить
+## Какую проблему решаем
 
-## Почему это важно
+## Предлагаемое решение
 
-## Предлагаемый вариант
+## Почему это вписывается в текущий scope
 
-## Safety impact
+## Safety / boundaries impact
 
-Опишите, как изменение сохраняет policy-first contract и product boundaries.
+Опишите, как сохраняются:
+
+- policy-first contract;
+- отсутствие clinical framing;
+- честные границы текущего stage.
