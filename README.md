@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/soma-repo-card.png" alt="Soma repository card" width="100%">
+  <img src="docs/soma-repo-card.png.png" alt="Soma repository card" width="100%">
 </p>
 
 # Soma
