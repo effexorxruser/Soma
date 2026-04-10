@@ -8,6 +8,7 @@
 - [`roadmap.md`](./roadmap.md) — стадии развития без раздувания scope.
 - [`product-principles.md`](./product-principles.md) — продуктовые инварианты и тон коммуникации.
 - [`safety.md`](./safety.md) — явные safety-границы и policy-first требования.
+- [`conversational-contract-v1.md`](./conversational-contract-v1.md) — канонический v1 conversational contract, сценарии и response shape.
 
 ## 2) Engineering layer
 
