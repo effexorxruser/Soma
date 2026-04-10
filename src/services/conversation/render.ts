@@ -66,7 +66,7 @@ export function renderStructuredReply(inputText: string): string {
 }
 
 function compact(value: string): string {
-  const normalized = value.replace(/\s+/g, ' ').trim();
+  const normalized = normalizeConversationInput(value);
 
   if (normalized.length === 0) {
     return '';
@@ -111,43 +111,30 @@ const ACKNOWLEDGEMENT_SHORT_KEYWORDS = [
 const AMBIGUOUS_SHORT_KEYWORDS = ['как-то так', 'ну да', 'мм', 'мда', 'хм'];
 
 export function detectConversationProfile(input: string): ConversationProfile {
-  const normalized = input.toLowerCase();
+  const normalized = normalizeConversationInput(input);
+  const shortCandidate = normalizeShortPhrase(input);
 
   if (!normalized) {
     return 'ambiguous_short';
   }
 
-  if (containsAny(normalized, ['тревог', 'тревожно', 'страшно', 'паник', 'накрывает'])) {
-    return 'anxiety';
+  for (const rule of PROFILE_PRIORITY_RULES) {
+    if (containsAny(normalized, rule.keywords)) {
+      return rule.profile;
+    }
   }
 
-  if (containsAny(normalized, ['перегруз', 'завал', 'слишком много', 'не вывожу', 'устал'])) {
-    return 'overload';
-  }
+  const isShortInput = shortCandidate.length <= 18 && shortCandidate.split(' ').length <= 3;
 
-  if (containsAny(normalized, ['не понимаю', 'запутал', 'расфокус', 'не знаю что делать', 'каша в голове'])) {
-    return 'confusion';
-  }
-
-  if (containsAny(normalized, ['следующий шаг', 'с чего начать', 'что делать дальше', 'первый шаг'])) {
-    return 'small_step_request';
-  }
-
-  if (containsAny(normalized, ['разобрать состояние', 'помоги разобрать', 'помоги разложить', 'что со мной'])) {
-    return 'soft_state_review';
-  }
-
-  const isShortInput = normalized.length <= 18 && normalized.split(' ').length <= 3;
-
-  if (isShortInput && matchesShortPhrase(normalized, GREETING_SHORT_KEYWORDS)) {
+  if (isShortInput && matchesShortPhrase(shortCandidate, GREETING_SHORT_KEYWORDS)) {
     return 'greeting_short';
   }
 
-  if (isShortInput && matchesShortPhrase(normalized, ACKNOWLEDGEMENT_SHORT_KEYWORDS)) {
+  if (isShortInput && matchesShortPhrase(shortCandidate, ACKNOWLEDGEMENT_SHORT_KEYWORDS)) {
     return 'acknowledgement_short';
   }
 
-  if (isShortInput && matchesShortPhrase(normalized, AMBIGUOUS_SHORT_KEYWORDS)) {
+  if (isShortInput && matchesShortPhrase(shortCandidate, AMBIGUOUS_SHORT_KEYWORDS)) {
     return 'ambiguous_short';
   }
 
@@ -169,3 +156,44 @@ function containsAny(input: string, keywords: string[]): boolean {
 function joinLines(lines: string[]): string {
   return lines.join('\n');
 }
+
+function normalizeConversationInput(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function normalizeShortPhrase(value: string): string {
+  return normalizeConversationInput(value)
+    .replace(/[()[\]{}"«»]/g, ' ')
+    .replace(/[.!?,;:…]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const PROFILE_PRIORITY_RULES: Array<{
+  profile: Extract<
+    ConversationProfile,
+    'anxiety' | 'overload' | 'confusion' | 'small_step_request' | 'soft_state_review'
+  >;
+  keywords: string[];
+}> = [
+  {
+    profile: 'anxiety',
+    keywords: ['тревог', 'тревожно', 'страшно', 'паник', 'накрывает', 'тяжело'],
+  },
+  {
+    profile: 'overload',
+    keywords: ['перегруз', 'перегружен', 'завал', 'слишком много', 'не вывожу', 'устал'],
+  },
+  {
+    profile: 'confusion',
+    keywords: ['не понимаю', 'запутал', 'запутался', 'расфокус', 'не знаю что делать', 'каша в голове'],
+  },
+  {
+    profile: 'small_step_request',
+    keywords: ['следующий шаг', 'с чего начать', 'что делать дальше', 'что дальше делать', 'первый шаг'],
+  },
+  {
+    profile: 'soft_state_review',
+    keywords: ['разобрать состояние', 'помоги разобрать', 'помоги разложить', 'что со мной', 'по полкам'],
+  },
+];

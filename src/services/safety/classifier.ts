@@ -75,12 +75,18 @@ function isWeakMarkerAmbiguousRequest(input: string): boolean {
 }
 
 function isNoisyOrTooShort(input: string): boolean {
-  if (input.length < 2) {
+  const punctuationNormalized = input
+    .replace(/[()[\]{}"«»]/g, ' ')
+    .replace(/[.!?,;:…]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (punctuationNormalized.length < 2) {
     return true;
   }
 
   const letters = Array.from(input).filter((char) => /[a-zа-яё]/i.test(char)).length;
   const nonLetters = input.length - letters;
 
-  return letters === 0 || nonLetters > letters;
+  return letters === 0 || nonLetters > letters * 2;
 }

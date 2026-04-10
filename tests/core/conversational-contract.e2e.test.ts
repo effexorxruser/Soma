@@ -309,6 +309,129 @@ const SCENARIOS: Scenario[] = [
   },
 ];
 
+const REAL_WORLD_NOISY_SCENARIOS: Scenario[] = [
+  {
+    name: 'noisy greeting punctuation: Привет!',
+    input: 'Привет!',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'greeting_short',
+    expectedSubstrings: ['Здравствуйте.', 'можем спокойно продолжить'],
+    forbiddenSubstrings: ['уточнить одним коротким предложением'],
+    minLines: 2,
+    maxLines: 2,
+  },
+  {
+    name: 'noisy acknowledgement punctuation: ясно...',
+    input: 'ясно...',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'acknowledgement_short',
+    expectedSubstrings: ['Принято.'],
+    minLines: 2,
+    maxLines: 2,
+  },
+  {
+    name: 'noisy ambiguous short: ну...',
+    input: 'ну...',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'ambiguous_short',
+    expectedSubstrings: ['уточнить одним коротким предложением'],
+    minLines: 1,
+    maxLines: 1,
+  },
+  {
+    name: 'mixed state: тревожно + с чего начать',
+    input: 'тревожно, но не понимаю с чего начать',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'anxiety',
+    expectedSubstrings: ['тревога', 'ближайших 10 минут', 'Маленький шаг'],
+    minLines: 3,
+    maxLines: 4,
+  },
+  {
+    name: 'mixed state: overload + confusion',
+    input: 'устал и каша в голове',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'overload',
+    expectedSubstrings: ['перегруз', 'один приоритет', 'Маленький шаг'],
+    minLines: 3,
+    maxLines: 4,
+  },
+  {
+    name: 'mixed state: greeting + emotional load',
+    input: 'привет, мне как-то тяжело',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'anxiety',
+    expectedSubstrings: ['тревога', 'ближайших 10 минут'],
+    forbiddenSubstrings: ['Здравствуйте.'],
+    minLines: 3,
+    maxLines: 4,
+  },
+  {
+    name: 'neutral noisy household plan',
+    input: 'план на вечер: дом, магазин, еда',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'neutral',
+    expectedSubstrings: ['Вижу ваш контекст', 'Маленький шаг'],
+    forbiddenSubstrings: ['кризис', 'лечение'],
+    minLines: 3,
+    maxLines: 4,
+  },
+  {
+    name: 'weak-marker false-positive guardrail: план готов',
+    input: 'план готов',
+    expectedClassification: 'neutral_message',
+    expectedOutcome: 'allow_placeholder_response',
+    expectedRoute: 'conversation',
+    expectedKind: 'conversation',
+    expectedProfile: 'ambiguous_short',
+    expectedSubstrings: ['уточнить одним коротким предложением'],
+    forbiddenSubstrings: ['не поддерживает этот тип запроса'],
+    minLines: 1,
+    maxLines: 1,
+  },
+  {
+    name: 'policy boundary noisy: лечение?',
+    input: 'подскажи лечение?',
+    expectedClassification: 'medical_or_therapy_request',
+    expectedOutcome: 'refuse_medical_boundary',
+    expectedRoute: 'policy',
+    expectedKind: 'policy',
+    expectedProfile: null,
+    expectedSubstrings: [getPolicyMessage('refuse_medical_boundary')],
+  },
+  {
+    name: 'policy boundary noisy: capability form',
+    input: 'проанализируй меня нормально',
+    expectedClassification: 'capability_request',
+    expectedOutcome: 'refuse_capability_boundary',
+    expectedRoute: 'policy',
+    expectedKind: 'policy',
+    expectedProfile: null,
+    expectedSubstrings: [getPolicyMessage('refuse_capability_boundary')],
+  },
+];
+
 function lineCount(value: string): number {
   return value.split('\n').length;
 }
@@ -332,6 +455,63 @@ describe('conversational contract v1: end-to-end golden scenarios', () => {
   });
 
   for (const scenario of SCENARIOS) {
+    it(scenario.name, async () => {
+      const context = {
+        source: 'telegram' as const,
+        messageKind: 'text' as const,
+        text: scenario.input,
+        userId: 7,
+      };
+
+      const policyDecision = policyContract.evaluate(context);
+      expect(policyDecision.classification).toBe(scenario.expectedClassification);
+      expect(policyDecision.outcome).toBe(scenario.expectedOutcome);
+      expect(policyDecision.routing.allowFutureConversationalStage).toBe(scenario.expectedRoute === 'conversation');
+      if (scenario.expectedProfile) {
+        expect(detectConversationProfile(scenario.input)).toBe(scenario.expectedProfile);
+      }
+
+      const result = await orchestrator.handleText(context);
+      expect(result.kind).toBe(scenario.expectedKind);
+
+      for (const expectedText of scenario.expectedSubstrings) {
+        expect(result.text).toContain(expectedText);
+      }
+
+      for (const forbiddenText of scenario.forbiddenSubstrings ?? []) {
+        expect(result.text).not.toContain(forbiddenText);
+      }
+
+      if (scenario.minLines) {
+        expect(lineCount(result.text)).toBeGreaterThanOrEqual(scenario.minLines);
+      }
+
+      if (scenario.maxLines) {
+        expect(lineCount(result.text)).toBeLessThanOrEqual(scenario.maxLines);
+      }
+    });
+  }
+});
+
+describe('conversational contract v1: real-world noisy scenario pack', () => {
+  const policyContract = createPolicyFirstContract();
+  const usersService: UsersService = {
+    getOrCreateProfile: (userId) => ({ userId, plan: 'free', createdAt: '', updatedAt: '' }),
+  };
+  const usageService: UsageService = {
+    getDailySnapshot: () => ({ key: { userId: 7, dateKey: '2026-04-10' }, messageCount: 0 }),
+    getLimitDecision: () => ({ limit: 50, used: 0, remaining: 50, exceeded: false }),
+    incrementDailyUsage: () => ({ key: { userId: 7, dateKey: '2026-04-10' }, messageCount: 1 }),
+  };
+  const orchestrator = createAppOrchestrator({
+    policyContract,
+    usersService,
+    usageService,
+    conversationService: createConversationService(),
+    freeDailyMessageLimit: 50,
+  });
+
+  for (const scenario of REAL_WORLD_NOISY_SCENARIOS) {
     it(scenario.name, async () => {
       const context = {
         source: 'telegram' as const,
