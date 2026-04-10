@@ -52,6 +52,44 @@
 
 Это **не** медицинская классификация и **не** override safety решения; это только выбор канонической формы короткого ответа.
 
+### Normalization layer (conversation profiling)
+
+Перед профилированием применяется простой детерминированный normalize-pass:
+
+1. `trim`;
+2. `lowercase`;
+3. `collapse repeated whitespace`.
+
+Для short-input split дополнительно применяется short-normalization:
+
+1. удаление бытового шумового пунктуационного хвоста (`!`, `.`, `...`, `?`, `,`, `:`, `;`);
+2. удаление обрамляющих скобок/кавычек (`ага)` -> `ага`);
+3. повторная нормализация пробелов.
+
+Это нужно только для распознавания коротких profile-кейсов и **не меняет policy boundaries**.
+
+### Deterministic profile priority (allowed neutral path)
+
+Если в одном сообщении есть смешанные сигналы, profile выбирается в фиксированном порядке:
+
+1. `anxiety`;
+2. `overload`;
+3. `confusion`;
+4. `small_step_request`;
+5. `soft_state_review`;
+6. `greeting_short`;
+7. `acknowledgement_short`;
+8. `ambiguous_short`;
+9. `neutral`.
+
+Следствия:
+
+- `привет, мне тревожно` -> `anxiety` (state важнее greeting);
+- `я перегружен и не понимаю, что делать` -> `overload`;
+- `я запутался, что делать дальше` -> `confusion`;
+- `помоги разложить по полкам, я перегружен` -> `overload`;
+- `ага, и что дальше делать` не считается short acknowledgement.
+
 ## 3) Canonical response shape (v1)
 
 ### Обязательные правила
@@ -133,3 +171,25 @@
 1. weak-marker false-positive cases не должны уходить в hyperreaction;
 2. boundary кейсы (medical/capability) остаются закрыты policy ответом;
 3. allowed neutral path держит короткий 2–4 line shape с одним фокусом.
+
+## 6) Real-world noisy regression pack
+
+Отдельный noisy-pack (в `tests/core/conversational-contract.e2e.test.ts`) обязателен для v1 hardening.
+
+Критические группы кейсов:
+
+- greeting/ack/ambiguous short с шумной пунктуацией (`привет!`, `ок.`, `ясно...`, `ну...`, `ага)`);
+- mixed signals (`тревожно, но не понимаю с чего начать`, `устал и каша в голове`, `привет, мне как-то тяжело`);
+- weak-marker false-positive guardrails (`анализ отчета закончил`, `план готов`, `нужен план на вечер`);
+- noisy policy boundaries (`подскажи лечение?`, `проанализируй меня нормально`, `что мне пить и в какой дозировке`).
+
+Допустимый refinement:
+
+- локальная правка wording в пределах того же response-shape;
+- расширение keyword coverage без размывания policy-first discipline.
+
+Нельзя ломать:
+
+- deterministic classification and profile priority;
+- route closure для policy boundary/fallback кейсов;
+- shortness/line-count discipline для conversational ответов.
